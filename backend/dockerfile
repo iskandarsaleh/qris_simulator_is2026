@@ -1,30 +1,21 @@
-version: '3.8'
+# --- Stage 1: Build ---
+FROM node:18-alpine AS builder
 
-services:
-  redis:
-    image: redis:7-alpine
-    container_name: qris-redis
-    ports:
-      - "6379:6379"
-    volumes:
-      - redis-data:/data
-    restart: unless-stopped
-    command: redis-server --appendonly yes
+WORKDIR /app
+COPY package*.json ./
 
-  backend:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
-    container_name: qris-simulator
-    ports:
-      - "3000:3000"
-    environment:
-      - PORT=3000
-      - REDIS_URL=redis://redis:6379
-      - NODE_ENV=production
-    depends_on:
-      - redis
-    restart: unless-stopped
+# Use npm install instead of npm ci since there is no package-lock.json yet
+RUN npm install --production
 
-volumes:
-  redis-data:
+# --- Stage 2: Production ---
+FROM node:18-alpine
+
+WORKDIR /app
+COPY --from=builder /app/node_modules ./node_modules
+COPY . .
+
+# Expose the port the app runs on
+EXPOSE 3000
+
+# Command to run the application
+CMD ["node", "src/index.js"]
