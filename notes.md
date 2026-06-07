@@ -1,5 +1,57 @@
 ```javascript
-    00000001',
+/**
+ * Mock data for all QRIS simulation scenarios
+ */
+
+const MPM_MERCHANTS = [
+  {
+    id: 'MPM-SUCCESS',
+    label: 'Warung Kopi Nusantara (Static QR)',
+    merchantPan:  '9360000100000001',
+    merchantId:   '1234567890123',
+    merchantName: 'WARUNG KOPI NUSANTARA',
+    merchantCity: 'JAKARTA',
+    countryCode:  'ID',
+    currency:     '360',
+    merchantCriteria: 'U',
+    terminalId:   'TERM0001',
+  },
+  {
+    id: 'MPM-DYNAMIC',
+    label: 'Toko Elektronik Maju (Dynamic QR)',
+    merchantPan:  '9360000200000002',
+    merchantId:   '2345678901234',
+    merchantName: 'TOKO ELEKTRONIK MAJU',
+    merchantCity: 'BANDUNG',
+    countryCode:  'ID',
+    currency:     '360',
+    merchantCriteria: 'U',
+    terminalId:   'TERM0002',
+  },
+  {
+    id: 'MPM-AGGREGATOR',
+    label: 'GoFood Merchant (Aggregator)',
+    merchantPan:  '9360000300000003',
+    merchantId:   '3456789012345',
+    merchantName: 'BAKSO PAK KUMIS',
+    merchantCity: 'SURABAYA',
+    countryCode:  'ID',
+    currency:     '360',
+    merchantCriteria: 'U',
+    terminalId:   'GFOOD001',
+  },
+];
+
+const CPM_CONSUMERS = [
+  {
+    id: 'CPM-SUCCESS',
+    label: 'Ahmad Rizky (Active Card)',
+    consumerPan:  '9360001000000001',
+    consumerName: 'AHMAD RIZKY',
+    consumerCity: 'JAKARTA',
+    countryCode:  'ID',
+    currency:     '360',
+    token:        'TK00000001',
     cardExpiry:   '2512',
   },
   {
