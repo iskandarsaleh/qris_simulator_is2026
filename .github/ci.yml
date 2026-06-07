@@ -1,0 +1,68 @@
+name: QRIS Simulator CI
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    services:
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    strategy:
+      matrix:
+        node-version: [18.x, 20.x]
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Setup Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v3
+        with:
+          node-version: ${{ matrix.node-version }}
+
+      - name: Install Backend Dependencies
+        run: cd backend && npm ci
+
+      - name: Start Application in Background
+        run: cd backend && node src/index.js &
+        env:
+          PORT: 3000
+          REDIS_URL: redis://localhost:6379
+
+      - name: Wait for App to be Ready
+        run: |
+          timeout 30 bash -c 'while [[ "$(curl -s -o /dev/null -w ''%{http_code}'' http://localhost:3000/api/health)" != "200" ]]; do echo "Waiting for API..."; sleep 2; done'
+          
+      - name: Install Playwright Dependencies
+        run: cd tests/playwright && npm ci && npx playwright install --with-deps chromium
+
+      - name: Run Playwright Tests
+        run: cd tests/playwright && npx playwright test
+
+      - name: Upload Playwright Report
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: playwright-report-${{ matrix.node-version }}
+          path: tests/playwright/playwright-report/
+          retention-days: 7
+
+      - name: Install Newman (Postman CLI)
+        run: npm install -g newman
+
+      - name: Run Postman Tests
+        run: newman run tests/postman/qris-simulator.postman_collection.json --env-var baseUrl=http://localhost:3000/api

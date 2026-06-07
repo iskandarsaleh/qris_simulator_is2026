@@ -1,0 +1,21 @@
+{
+  "name": "qris-simulator",
+  "version": "1.0.0",
+  "description": "QRIS MPM/CPM/Tuntas/Cross-Border Simulator with ISO8583, TLV, Redis",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "nodemon src/index.js",
+    "test": "echo \"Run playwright tests from project root\" && exit 0"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^16.3.1",
+    "express": "^4.18.2",
+    "redis": "^4.6.10",
+    "uuid": "^9.0.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.2"
+  }
+}

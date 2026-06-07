@@ -1,0 +1,40 @@
+qris-simulator/
+├── backend/
+│   ├── src/
+│   │   ├── index.js
+│   │   ├── services/
+│   │   │   ├── redis.js
+│   │   │   ├── tlv.js
+│   │   │   ├── qris.js
+│   │   │   ├── iso8583.js
+│   │   │   ├── mapping.js
+│   │   │   └── transaction.js
+│   │   ├── routes/
+│   │   │   ├── qris.js
+│   │   │   ├── iso8583.js
+│   │   │   ├── tlv.js
+│   │   │   └── transaction.js
+│   │   └── mock/
+│   │       └── data.js
+│   ├── package.json
+│   └── .env
+├── frontend/
+│   ├── index.html
+│   ├── css/
+│   │   └── style.css
+│   └── js/
+│       └── app.js
+├── tests/
+│   ├── playwright/
+│   │   ├── qris-simulator.spec.js
+│   │   └── playwright.config.js
+│   └── postman/
+│       └── qris-simulator.postman_collection.json
+├── docs/
+│   └── sequence/
+│       ├── mpm-flow.puml
+│       ├── cpm-flow.puml
+│       ├── tuntas-flow.puml
+│       └── crossborder-flow.puml
+├── setup.sh
+└── README.md

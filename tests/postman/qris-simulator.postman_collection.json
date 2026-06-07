@@ -1,0 +1,350 @@
+{
+  "info": {
+    "name": "QRIS Simulator",
+    "description": "Complete API test collection for QRIS MPM, CPM, TUNTAS, Cross Border simulator",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:3000/api" },
+    { "key": "qrisString", "value": "" },
+    { "key": "rrn", "value": "" },
+    { "key": "transactionId", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "01 - Health & Mock Data",
+      "item": [
+        {
+          "name": "Health Check",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('Status is OK', () => pm.response.to.have.status(200));","pm.test('Body has status OK', () => pm.expect(pm.response.json().status).to.eql('OK'));"] } }],
+          "request": { "method": "GET", "url": "{{baseUrl}}/health" }
+        },
+        {
+          "name": "Get Mock Merchants",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('Returns merchant list', () => {","  const d = pm.response.json();","  pm.expect(d.length).to.be.above(0);","  pm.expect(d[0].merchantPan).to.exist;","});"] } }],
+          "request": { "method": "GET", "url": "{{baseUrl}}/qris/mock/merchants" }
+        },
+        {
+          "name": "Get Mock Scenarios",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('Returns scenario list', () => {","  const d = pm.response.json();","  pm.expect(d.length).to.be.above(0);","  pm.expect(d[0].id).to.eql('success');","});"] } }],
+          "request": { "method": "GET", "url": "{{baseUrl}}/qris/mock/scenarios" }
+        }
+      ]
+    },
+    {
+      "name": "02 - QRIS Generation",
+      "item": [
+        {
+          "name": "Generate MPM QR",
+          "event": [
+            { "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('MPM QR generated', () => {","  const d = pm.response.json();","  pm.expect(d.success).to.be.true;","  pm.expect(d.qrisString).to.exist;","  pm.expect(d.parsed.mode).to.eql('MPM');","  pm.expect(d.parsed.valid).to.be.true;","  pm.collectionVariables.set('qrisString', d.qrisString);","});"] } },
+            { "listen": "prerequest", "script": { "type": "text/javascript", "exec": [] } }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/qris/generate/mpm",
+            "body": { "mode": "raw", "raw": "{\n  \"merchantPan\": \"9360000100000001\",\n  \"merchantId\": \"1234567890123\",\n  \"merchantName\": \"WARUNG KOPI NUSANTARA\",\n  \"merchantCity\": \"JAKARTA\",\n  \"transactionAmount\": 25000,\n  \"currency\": \"360\",\n  \"countryCode\": \"ID\",\n  \"terminalId\": \"TERM0001\",\n  \"merchantCriteria\": \"U\"\n}" }
+          }
+        },
+        {
+          "name": "Generate MPM QR (Static - No Amount)",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('Static MPM QR generated', () => {","  const d = pm.response.json();","  pm.expect(d.parsed.tags['01']).to.eql('11');","});"] } }],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/qris/generate/mpm",
+            "body": { "mode": "raw", "raw": "{\n  \"merchantPan\": \"9360000100000001\",\n  \"merchantId\": \"1234567890123\",\n  \"merchantName\": \"STATIC QR TEST\",\n  \"merchantCity\": \"JAKARTA\",\n  \"currency\": \"360\",\n  \"countryCode\": \"ID\"\n}" }
+          }
+        },
+        {
+          "name": "Generate CPM QR",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('CPM QR generated', () => {","  const d = pm.response.json();","  pm.expect(d.parsed.mode).to.eql('CPM');","  pm.expect(d.parsed.valid).to.be.true;","});"] } }],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/qris/generate/cpm",
+            "body": { "mode": "raw", "raw": "{\n  \"consumerPan\": \"9360001000000001\",\n  \"consumerName\": \"AHMAD RIZKY\",\n  \"consumerCity\": \"JAKARTA\",\n  \"transactionAmount\": 50000,\n  \"currency\": \"360\",\n  \"countryCode\": \"ID\",\n  \"token\": \"TK00000001\",\n  \"cardExpiry\": \"2512\"\n}" }
+          }
+        },
+        {
+          "name": "Generate Cross Border MPM QR",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/qris/generate/mpm",
+            "body": { "mode": "raw", "raw": "{\n  \"merchantPan\": \"9360005000000001\",\n  \"merchantId\": \"SG1234567890\",\n  \"merchantName\": \"SINGAPORE SOUVENIR\",\n  \"merchantCity\": \"SINGAPORE\",\n  \"transactionAmount\": 100,\n  \"currency\": \"702\",\n  \"countryCode\": \"SG\",\n  \"crossBorder\": {\n    \"destinationCountry\": \"ID\",\n    \"settlementCurrency\": \"360\",\n    \"merchantFee\": \"0.7\"\n  }\n}" }
+          }
+        }
+      ]
+    },
+    {
+      "name": "03 - QRIS Parse & Validate",
+      "item": [
+        {
+          "name": "Parse QRIS String",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('QRIS parsed successfully', () => {","  const d = pm.response.json();","  pm.expect(d.success).to.be.true;","  pm.expect(d.parsed.decoded.length).to.be.above(0);","});"] } }],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/qris/parse",
+            "body": { "mode": "raw", "raw": "{\n  \"qrisString\": \"{{qrisString}}\"\n}" }
+          }
+        },
+        {
+          "name": "Validate QRIS CRC",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('CRC is valid', () => {","  const d = pm.response.json();","  pm.expect(d.valid).to.be.true;","});"] } }],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/qris/validate",
+            "body": { "mode": "raw", "raw": "{\n  \"qrisString\": \"{{qrisString}}\"\n}" }
+          }
+        }
+      ]
+    },
+    {
+      "name": "04 - TLV Operations",
+      "item": [
+        {
+          "name": "Encode TLV",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('TLV encoded correctly', () => {","  const d = pm.response.json();","  pm.expect(d.encoded).to.eql('000201');","});"] } }],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/tlv/encode",
+            "body": { "mode": "raw", "raw": "{ \"tag\": \"00\", \"value\": \"01\" }" }
+          }
+        },
+        {
+          "name": "Decode TLV",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('TLV decoded correctly', () => {","  const d = pm.response.json();","  pm.expect(d.decoded).to.have.length(2);","  pm.expect(d.decoded[0]).to.eql({tag:'00',length:2,value:'01'});","});"] } }],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/tlv/decode",
+            "body": { "mode": "raw", "raw": "{ \"tlvString\": \"000201010211\" }" }
+          }
+        },
+        {
+          "name": "Build TLV from Tags",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/tlv/build",
+            "body": { "mode": "raw", "raw": "{\n  \"tags\": [\n    {\"tag\":\"00\",\"value\":\"01\"},\n    {\"tag\":\"01\",\"value\":\"12\"},\n    {\"tag\":\"53\",\"value\":\"360\"}\n  ]\n}" }
+          }
+        },
+        {
+          "name": "Map TLV to ISO8583",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('Mapping produced', () => {","  const d = pm.response.json();","  pm.expect(d.mapping.isoFields).to.exist;","  pm.expect(d.mapping.details.length).to.be.above(0);","});"] } }],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/tlv/map-to-iso",
+            "body": { "mode": "raw", "raw": "{ \"qrisString\": \"{{qrisString}}\" }" }
+          }
+        },
+        {
+          "name": "Map ISO8583 to TLV",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/tlv/map-to-tlv",
+            "body": { "mode": "raw", "raw": "{\n  \"fields\": {\n    \"2\": \"9360000100000001\",\n    \"3\": \"260000\",\n    \"4\": \"0000000025000\",\n    \"49\": \"360\"\n  }\n}" }
+          }
+        },
+        {
+          "name": "Get Mapping Reference",
+          "request": { "method": "GET", "url": "{{baseUrl}}/tlv/mapping-reference" }
+        }
+      ]
+    },
+    {
+      "name": "05 - ISO8583",
+      "item": [
+        {
+          "name": "Build ISO8583 Message",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('ISO8583 built', () => {","  const d = pm.response.json();","  pm.expect(d.raw).to.exist;","  pm.expect(d.raw).to.include('0200');","});"] } }],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/iso8583/build",
+            "body": { "mode": "raw", "raw": "{\n  \"mti\": \"0200\",\n  \"fields\": {\n    \"2\": \"9360000100000001\",\n    \"3\": \"260000\",\n    \"4\": \"0000000025000\",\n    \"7\": \"231215143000\",\n    \"11\": \"000001\",\n    \"49\": \"360\"\n  }\n}" }
+          }
+        },
+        {
+          "name": "Get Action Codes Reference",
+          "request": { "method": "GET", "url": "{{baseUrl}}/iso8583/reference/action-codes" }
+        },
+        {
+          "name": "Get MTI Reference",
+          "request": { "method": "GET", "url": "{{baseUrl}}/iso8583/reference/mti" }
+        }
+      ]
+    },
+    {
+      "name": "06 - MPM Transactions",
+      "item": [
+        {
+          "name": "MPM Acquirer - Success",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('MPM Acq Approved', () => {","  const d = pm.response.json();","  pm.expect(d.result.status).to.eql('APPROVED');","  pm.expect(d.result.actionCode).to.eql('00');","  pm.collectionVariables.set('rrn', d.result.rrn);","  pm.collectionVariables.set('transactionId', d.result.transactionId);","});"] } }],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/transaction/mpm/acquirer",
+            "body": { "mode": "raw", "raw": "{\n  \"qrisString\": \"{{qrisString}}\",\n  \"amount\": 25000,\n  \"scenario\": \"success\",\n  \"pan\": \"9360000100000001\",\n  \"terminalId\": \"TERM0001\"\n}" }
+          }
+        },
+        {
+          "name": "MPM Acquirer - Insufficient Funds",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('MPM Acq Declined - Insufficient', () => {","  pm.expect(pm.response.json().result.actionCode).to.eql('51');","});"] } }],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/transaction/mpm/acquirer",
+            "body": { "mode": "raw", "raw": "{\n  \"qrisString\": \"{{qrisString}}\",\n  \"amount\": 50000000,\n  \"scenario\": \"insufficient\"\n}" }
+          }
+        },
+        {
+          "name": "MPM Acquirer - Timeout",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('MPM Acq Timeout', () => {","  pm.expect(pm.response.json().result.actionCode).to.eql('68');","});"] } }],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/transaction/mpm/acquirer",
+            "body": { "mode": "raw", "raw": "{\n  \"qrisString\": \"{{qrisString}}\",\n  \"amount\": 100000,\n  \"scenario\": \"timeout\"\n}" }
+          }
+        },
+        {
+          "name": "MPM Acquirer - Suspected Fraud",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('MPM Acq Fraud', () => {","  pm.expect(pm.response.json().result.actionCode).to.eql('59');","});"] } }],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/transaction/mpm/acquirer",
+            "body": { "mode": "raw", "raw": "{\n  \"qrisString\": \"{{qrisString}}\",\n  \"amount\": 15000000,\n  \"scenario\": \"suspected_fraud\"\n}" }
+          }
+        },
+        {
+          "name": "MPM Issuer - Success",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('MPM Iss Approved', () => {","  pm.expect(pm.response.json().result.status).to.eql('APPROVED');","});"] } }],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/transaction/mpm/issuer",
+            "body": { "mode": "raw", "raw": "{\n  \"amount\": 25000,\n  \"scenario\": \"success\",\n  \"rrn\": \"{{rrn}}\",\n  \"pan\": \"9360000100000001\",\n  \"currency\": \"360\"\n}" }
+          }
+        },
+        {
+          "name": "MPM Issuer - Failed",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('MPM Iss Declined', () => {","  pm.expect(pm.response.json().result.status).to.eql('DECLINED');","});"] } }],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/transaction/mpm/issuer",
+            "body": { "mode": "raw", "raw": "{\n  \"amount\": 75000,\n  \"scenario\": \"failed\",\n  \"pan\": \"9360000100000001\"\n}" }
+          }
+        }
+      ]
+    },
+    {
+      "name": "07 - CPM Transactions",
+      "item": [
+        {
+          "name": "CPM Acquirer - Success",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('CPM Acq Approved', () => {","  pm.expect(pm.response.json().result.status).to.eql('APPROVED');","});"] } }],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/transaction/cpm/acquirer",
+            "body": { "mode": "raw", "raw": "{\n  \"qrisString\": \"{{qrisString}}\",\n  \"amount\": 50000,\n  \"scenario\": \"success\",\n  \"terminalId\": \"TERM0001\"\n}" }
+          }
+        },
+        {
+          "name": "CPM Issuer - Success",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('CPM Iss Approved', () => {","  pm.expect(pm.response.json().result.status).to.eql('APPROVED');","});"] } }],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/transaction/cpm/issuer",
+            "body": { "mode": "raw", "raw": "{\n  \"amount\": 50000,\n  \"scenario\": \"success\",\n  \"pan\": \"9360001000000001\"\n}" }
+          }
+        }
+      ]
+    },
+    {
+      "name": "08 - QRIS TUNTAS",
+      "item": [
+        {
+          "name": "Tuntas - Full Success Flow",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('Tuntas completed', () => {","  const d = pm.response.json().result;","  pm.expect(d.status).to.eql('APPROVED');","  pm.expect(d.steps.length).to.be.above(1);","  pm.expect(d.steps.some(s => s.step === 'SETTLEMENT')).to.be.true;","});"] } }],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/transaction/tuntas",
+            "body": { "mode": "raw", "raw": "{\n  \"amount\": 25000,\n  \"scenario\": \"success\",\n  \"pan\": \"9360000100000001\",\n  \"merchantId\": \"MERCHANT001\",\n  \"terminalId\": \"TERM0001\",\n  \"currency\": \"360\"\n}" }
+          }
+        },
+        {
+          "name": "Tuntas - Failed at Auth",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('Tuntas failed at auth', () => {","  const d = pm.response.json().result;","  pm.expect(d.status).to.eql('DECLINED');","  pm.expect(d.steps.length).to.eql(1);","});"] } }],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/transaction/tuntas",
+            "body": { "mode": "raw", "raw": "{\n  \"amount\": 75000,\n  \"scenario\": \"failed\"\n}" }
+          }
+        }
+      ]
+    },
+    {
+      "name": "09 - Cross Border",
+      "item": [
+        {
+          "name": "Cross Border - Singapore Success",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('Cross border approved', () => {","  const d = pm.response.json().result;","  pm.expect(d.status).to.eql('APPROVED');","  pm.expect(d.crossBorder.originCurrency).to.eql('702');","  pm.expect(d.crossBorder.settlementCurrency).to.eql('360');","  pm.expect(d.qrisString).to.exist;","});"] } }],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/transaction/cross-border",
+            "body": { "mode": "raw", "raw": "{\n  \"amount\": 100,\n  \"originCountry\": \"SG\",\n  \"originCurrency\": \"702\",\n  \"settlementCurrency\": \"360\",\n  \"exchangeRate\": 11500,\n  \"scenario\": \"success\",\n  \"merchantName\": \"SINGAPORE SOUVENIR\",\n  \"merchantCity\": \"SINGAPORE\"\n}" }
+          }
+        },
+        {
+          "name": "Cross Border - Malaysia Failed",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('Cross border declined', () => {","  pm.expect(pm.response.json().result.status).to.eql('DECLINED');","});"] } }],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/transaction/cross-border",
+            "body": { "mode": "raw", "raw": "{\n  \"amount\": 200,\n  \"originCountry\": \"MY\",\n  \"originCurrency\": \"458\",\n  \"settlementCurrency\": \"360\",\n  \"exchangeRate\": 3200,\n  \"scenario\": \"failed\",\n  \"merchantName\": \"MALAYSIA ELECTRONICS\",\n  \"merchantCity\": \"KUALA LUMPUR\"\n}" }
+          }
+        }
+      ]
+    },
+    {
+      "name": "10 - Transaction Queries",
+      "item": [
+        {
+          "name": "Get Transaction by RRN",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('Transaction found by RRN', () => {","  const d = pm.response.json();","  pm.expect(d.result).to.exist;","});"] } }],
+          "request": { "method": "GET", "url": "{{baseUrl}}/transaction/rrn/{{rrn}}" }
+        },
+        {
+          "name": "Get Transaction Log",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('Log returns array', () => {","  pm.expect(pm.response.json().result).to.be.an('array');","});"] } }],
+          "request": { "method": "GET", "url": "{{baseUrl}}/transaction/log?limit=20" }
+        },
+        {
+          "name": "Get All Transactions",
+          "request": { "method": "GET", "url": "{{baseUrl}}/transaction/all" }
+        },
+        {
+          "name": "Clear All Transactions",
+          "request": { "method": "DELETE", "url": "{{baseUrl}}/transaction/clear" }
+        }
+      ]
+    }
+  ]
+}

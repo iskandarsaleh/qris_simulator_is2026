@@ -1,0 +1,52 @@
+@startuml Cross Border Flow
+title QRIS CROSS BORDER Transaction Flow
+
+actor "Customer\n(ID Wallet)" as cust
+participant "Acquirer\n(Origin Country)" as acq
+participant "Origin\nSwitch" as osw
+participant "Cross Border\nGateway" as cbg
+participant "Destination\nSwitch" as dsw
+participant "Issuer\n(Destination)" as iss
+database "Redis" as redis
+
+cust -> cust : Scan Foreign QRIS\n(eg. Singapore merchant)
+
+cust -> acq : Initiate Cross Border Payment
+acq -> acq : Parse QRIS\nDetect Tag 91 (Cross Border)\nExtract Destination Country\nSettlement Currency
+
+acq -> acq : Build 0200 Auth Request\nDE4: Origin Amount\nDE5: Settlement Amount\nDE49: Origin Currency\nDE50: Settlement Currency\nDE48: QRIS + Cross Border TLV
+
+acq -> redis : Store Cross Border Txn\n(Origin & Settlement amounts,\nExchange Rate)
+
+acq -> osw : 0200 Auth Request
+osw -> cbg : 0200 Forward (Cross Border)
+
+cbg -> cbg : Currency Conversion\nApply Exchange Rate\nCalculate Settlement Amount\nValidate Cross Border Rules
+
+cbg -> dsw : 0200 Route to Destination
+dsw -> iss : 0200 Forward to Issuer
+
+iss -> iss : Validate Merchant\nProcess as Domestic Txn\n(in settlement currency)
+
+alt Approved
+    iss -> dsw : 0210 (DE39=00)
+    dsw -> cbg : 0210 Approved
+    cbg -> cbg : Record FX Rate\nSettlement Obligation
+    cbg -> osw : 0210 Forward
+    osw -> acq : 0210 Approved\n(DE5: Settlement Amount\n DE50: Settlement Currency)
+    acq -> redis : Update = APPROVED\nSettlement Amount Confirmed
+    acq -> cust : Payment Success ✅
+    
+    note over acg,cbg : Settlement happens via\nCross Border Settlement\nmechanism (BI-FAST/SWIFT)
+    
+else Declined
+    iss -> dsw : 0210 (DE39=05/51)
+    dsw -> cbg : 0210 Declined
+    cbg -> osw : 0210 Declined
+    osw -> acq : 0210 Declined
+    acq -> cust : Payment Failed ❌
+end
+
+note over redis : Cross Border Data Stored:\n- Origin Country/Currency/Amount\n- Destination Country/Currency\n- Exchange Rate\n- Settlement Amount\n- Fee/MDR
+
+@enduml

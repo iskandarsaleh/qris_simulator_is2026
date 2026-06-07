@@ -1,0 +1,45 @@
+@startuml CPM Flow
+title QRIS CPM (Consumer Presented Mode) Transaction Flow
+
+actor "Customer" as cust
+participant "Customer\nApp/Wallet" as wallet
+participant "Merchant\nPOS" as pos
+participant "Acquirer" as acq
+participant "Switch" as sw
+participant "Issuer" as iss
+database "Redis" as redis
+
+cust -> wallet : Open QRIS CPM\nDisplay QR Code
+wallet -> wallet : Generate CPM QR\n(Consumer PAN, Token)
+
+pos -> cust : Scan CPM QR
+pos -> pos : Parse TLV\nExtract Consumer PAN\nValidate CRC
+
+pos -> acq : 0200 Auth Request\n(DE2:ConsumerPAN,\n DE3:260000,\n DE4:Amount,\n DE48:CPM_QRIS)
+acq -> acq : Map TLV → ISO8583
+acq -> redis : Store Transaction
+
+acq -> sw : 0200 Forward
+sw -> iss : 0200 Route to Issuer
+
+iss -> iss : Validate Consumer PAN\nCheck Token\nVerify Balance
+
+alt Approved
+    iss -> sw : 0210 (DE39=00)
+    sw -> acq : 0210 (DE39=00)
+    acq -> redis : Update = APPROVED
+    acq -> pos : Approved
+    pos -> cust : Payment Success ✅
+    
+    note over acq,sw : Financial Advice Flow
+    acq -> sw : 0220 Advice
+    sw -> acq : 0230 Advice ACK
+    
+else Declined
+    iss -> sw : 0210 (DE39=05/51/57)
+    sw -> acq : 0210 Response
+    acq -> pos : Declined
+    pos -> cust : Payment Failed ❌
+end
+
+@enduml

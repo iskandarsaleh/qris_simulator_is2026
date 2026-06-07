@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>QRIS Simulator</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <header>
+    <div class="header-inner">
+      <h1>⚡ QRIS Simulator</h1>
+      <div class="header-meta">
+        <span id="redisStatus" class="badge">Connecting…</span>
+        <span class="badge secondary">v1.0</span>
+      </div>
+    </div>
+  </header>
+
+  <nav class="tabs">
+    <button class="tab active" data-tab="generator">QR Generator</button>
+    <button class="tab" data-tab="parser">QR Parser</button>
+    <button class="tab" data-tab="iso8583">ISO8583</button>
+    <button class="tab" data-tab="mapping">TLV↔ISO Map</button>
+    <button class="tab" data-tab="mpm">MPM Txn</button>
+    <button class="tab" data-tab="cpm">CPM Txn</button>
+    <button class="tab" data-tab="tuntas">Tuntas</button>
+    <button class="tab" data-tab="crossborder">Cross Border</button>
+    <button class="tab" data-tab="log">Txn Log</button>
+  </nav>
+
+  <main>
+    <!-- ─── QR Generator ──────────────────────── -->
+    <section id="tab-generator" class="tab-content active">
+      <div class="card">
+        <h2>Generate QRIS String</h2>
+        <div class="form-grid">
+          <div class="field">
+            <label>Mode</label>
+            <select id="genMode"><option value="mpm">MPM (Merchant Presented)</option><option value="cpm">CPM (Consumer Presented)</option></select>
+          </div>
+          <div class="field">
+            <label>PAN</label>
+            <input id="genPan" value="9360000100000001" placeholder="9360...">
+          </div>
+          <div class="field">
+            <label>Merchant / Consumer ID</label>
+            <input id="genMerchId" value="1234567890123">
+          </div>
+          <div class="field">
+            <label>Name</label>
+            <input id="genName" value="WARUNG KOPI NUSANTARA">
+          </div>
+          <div class="field">
+            <label>City</label>
+            <input id="genCity" value="JAKARTA">
+          </div>
+          <div class="field">
+            <label>Amount (0 = static)</label>
+            <input id="genAmount" type="number" value="25000">
+          </div>
+          <div class="field">
+            <label>Currency</label>
+            <select id="genCurrency"><option value="360">IDR (360)</option><option value="702">SGD (702)</option><option value="458">MYR (458)</option><option value="764">THB (764)</option></select>
+          </div>
+          <div class="field">
+            <label>Country</label>
+            <input id="genCountry" value="ID" maxlength="2">
+          </div>
+          <div class="field">
+            <label>Terminal ID</label>
+            <input id="genTerminal" value="TERM0001">
+          </div>
+          <div class="field">
+            <label>Criteria</label>
+            <select id="genCriteria"><option value="U">U - Usaha Mikro</option><option value="M">M - Menengah</option><option value="L">L - Large</option></select>
+          </div>
+        </div>
+        <button class="btn primary" onclick="generateQR()">Generate QRIS</button>
+        <div id="genResult" class="result-box" style="display:none"></div>
+      </div>
+    </section>
+
+    <!-- ─── QR Parser ──────────────────────────── -->
+    <section id="tab-parser" class="tab-content">
+      <div class="card">
+        <h2>Parse QRIS String</h2>
+        <div class="field">
+          <label>QRIS String</label>
+          <textarea id="parseInput" rows="4" placeholder="00020101021126..."></textarea>
+        </div>
+        <div class="btn-row">
+          <button class="btn primary" onclick="parseQR()">Parse</button>
+          <button class="btn" onclick="loadSampleMPM()">Load MPM Sample</button>
+          <button class="btn" onclick="loadSampleCPM()">Load CPM Sample</button>
+        </div>
+        <div id="parseResult" class="result-box" style="display:none"></div>
+      </div>
+    </section>
+
+    <!-- ─── ISO8583 ────────────────────────────── -->
+    <section id="tab-iso8583" class="tab-content">
+      <div class="card">
+        <h2>ISO8583 Builder / Parser</h2>
+        <div class="split">
+          <div class="half">
+            <h3>Build Message</h3>
+            <div class="field"><label>MTI</label><select id="isoMti">
+              <option value="0200">0200 - Auth Request</option>
+              <option value="0210">0210 - Auth Response</option>
+              <option value="0220">0220 - Advice Request</option>
+              <option value="0230">0230 - Advice Response</option>
+              <option value="0400">0400 - Reversal Request</option>
+              <option value="0410">0410 - Reversal Response</option>
+              <option value="0500">0500 - Reconciliation Request</option>
+              <option value="0510">0510 - Reconciliation Response</option>
+              <option value="0800">0800 - Network Mgmt Request</option>
+              <option value="0810">0810 - Network Mgmt Response</option>
+            </select></div>
+            <div class="field"><label>PAN (DE2)</label><input id="isoPAN" value="9360000100000001"></div>
+            <div class="field"><label>Processing Code (DE3)</label><select id="isoProcCode">
+              <option value="260000">260000 - Purchase</option><option value="200000">200000 - Refund</option>
+              <option value="310000">310000 - Inquiry</option><option value="360000">360000 - Payment</option>
+            </select></div>
+            <div class="field"><label>Amount (DE4)</label><input id="isoAmount" type="number" value="25000"></div>
+            <div class="field"><label>STAN (DE11)</label><input id="isoSTAN" value="000001"></div>
+            <div class="field"><label>RRN (DE37)</label><input id="isoRRN" value="ABC123456789"></div>
+            <div class="field"><label>Terminal ID (DE41)</label><input id="isoTerminal" value="TERM0001"></div>
+            <div class="field"><label>Merchant ID (DE42)</label><input id="isoMerchId" value="MERCHANT001"></div>
+            <div class="field"><label>Currency (DE49)</label><select id="isoCurrency"><option value="360">IDR 360</option><option value="702">SGD 702</option></select></div>
+            <div class="field"><label>Action Code (DE39) - for responses</label><select id="isoActionCode">
+              <option value="00">00 - Approved</option><option value="05">05 - Do Not Honor</option>
+              <option value="13">13 - Invalid Amount</option><option value="51">51 - Insufficient Funds</option>
+              <option value="68">68 - Timeout</option><option value="91">91 - Issuer Inop</option><option value="96">96 - System Error</option>
+            </select></div>
+            <button class="btn primary" onclick="buildISO()">Build ISO8583</button>
+          </div>
+          <div class="half">
+            <h3>Parse Message</h3>
+            <div class="field"><label>Raw ISO8583</label><textarea id="isoParseInput" rows="5"></textarea></div>
+            <button class="btn" onclick="parseISO()">Parse</button>
+          </div>
+        </div>
+        <div id="isoResult" class="result-box" style="display:none"></div>
+      </div>
+    </section>
+
+    <!-- ─── TLV ↔ ISO Mapping ─────────────────── -->
+    <section id="tab-mapping" class="tab-content">
+      <div class="card">
+        <h2>TLV ↔ ISO8583 Mapping</h2>
+        <div class="field"><label>QRIS String (for TLV→ISO)</label><textarea id="mapQris" rows="3" placeholder="00020101021126..."></textarea></div>
+        <div class="btn-row">
+          <button class="btn primary" onclick="mapTLVtoISO()">TLV → ISO8583</button>
+          <button class="btn" onclick="mapISOtoTLV()">ISO8583 → TLV</button>
+          <button class="btn secondary" onclick="loadMappingRef()">Reference Table</button>
+        </div>
+        <div id="mapResult" class="result-box" style="display:none"></div>
+      </div>
+    </section>
+
+    <!-- ─── MPM Transaction ────────────────────── -->
+    <section id="tab-mpm" class="tab-content">
+      <div class="card">
+        <h2>MPM Transaction</h2>
+        <div class="role-toggle">
+          <button class="btn active" id="mpmRoleAcq" onclick="setRole('mpm','acquirer')">Acquirer</button>
+          <button class="btn" id="mpmRoleIss" onclick="setRole('mpm','issuer')">Issuer</button>
+        </div>
+        <div id="mpmAcqForm">
+          <div class="form-grid">
+            <div class="field"><label>QRIS String</label><textarea id="mpmQris" rows="3"></textarea></div>
+            <div class="field"><label>Amount</label><input id="mpmAmount" type="number" value="25000"></div>
+            <div class="field"><label>Scenario</label><select id="mpmScenario">
+              <option value="success">✅ Success</option><option value="pending">⏳ Pending</option>
+              <option value="failed">❌ Failed</option><option value="insufficient">💸 Insufficient</option>
+              <option value="timeout">⌛ Timeout</option><option value="suspected_fraud">🚨 Fraud</option>
+              <option value="system_error">⚙️ System Error</option><option value="duplicate">🔄 Duplicate</option>
+            </select></div>
+            <div class="field"><label>PAN (override)</label><input id="mpmPan" value="9360000100000001"></div>
+            <div class="field"><label>Terminal ID</label><input id="mpmTerminal" value="TERM0001"></div>
+            <div class="field"><label>Acq Institution</label><input id="mpmAcqInst" value="0001"></div>
+          </div>
+          <div class="btn-row">
+            <button class="btn primary" onclick="submitMPM('acquirer')">Submit as Acquirer</button>
+            <button class="btn" onclick="generateMPMForTxn()">Generate QR First</button>
+          </div>
+        </div>
+        <div id="mpmIssForm" style="display:none">
+          <div class="form-grid">
+            <div class="field"><label>Amount</label><input id="mpmIssAmount" type="number" value="25000"></div>
+            <div class="field"><label>Scenario</label><select id="mpmIssScenario"><option value="success">✅ Success</option><option value="pending">⏳ Pending</option><option value="failed">❌ Failed</option><option value="insufficient">💸 Insufficient</option><option value="timeout">⌛ Timeout</option></select></div>
+            <div class="field"><label>RRN</label><input id="mpmIssRRN"></div>
+            <div class="field"><label>PAN</label><input id="mpmIssPan" value="9360000100000001"></div>
+            <div class="field"><label>Currency</label><input id="mpmIssCurrency" value="360"></div>
+          </div>
+          <button class="btn primary" onclick="submitMPM('issuer')">Submit as Issuer</button>
+        </div>
+        <div id="mpmResult" class="result-box" style="display:none"></div>
+      </div>
+    </section>
+
+    <!-- ─── CPM Transaction ────────────────────── -->
+    <section id="tab-cpm" class="tab-content">
+      <div class="card">
+        <h2>CPM Transaction</h2>
+        <div class="role-toggle">
+          <button class="btn active" id="cpmRoleAcq" onclick="setRole('cpm','acquirer')">Acquirer</button>
+          <button class="btn" id="cpmRoleIss" onclick="setRole('cpm','issuer')">Issuer</button>
+        </div>
+        <div id="cpmAcqForm">
+          <div class="form-grid">
+            <div class="field"><label>QRIS String</label><textarea id="cpmQris" rows="3"></textarea></div>
+            <div class="field"><label>Amount</label><input id="cpmAmount" type="number" value="50000"></div>
+            <div class="field"><label>Scenario</label><select id="cpmScenario"><option value="success">✅ Success</option><option value="failed">❌ Failed</option><option value="insufficient">💸 Insufficient</option><option value="timeout">⌛ Timeout</option></select></div>
+            <div class="field"><label>Merchant ID</label><input id="cpmMerchId" value="MERCHANT001"></div>
+            <div class="field"><label>Terminal ID</label><input id="cpmTerminal" value="TERM0001"></div>
+          </div>
+          <div class="btn-row">
+            <button class="btn primary" onclick="submitCPM('acquirer')">Submit as Acquirer</button>
+            <button class="btn" onclick="generateCPMForTxn()">Generate QR First</button>
+          </div>
+        </div>
+        <div id="cpmIssForm" style="display:none">
+          <div class="form-grid">
+            <div class="field"><label>Amount</label><input id="cpmIssAmount" type="number" value="50000"></div>
+            <div class="field"><label>Scenario</label><select id="cpmIssScenario"><option value="success">✅ Success</option><option value="failed">❌ Failed</option><option value="insufficient">💸 Insufficient</option></select></div>
+            <div class="field"><label>RRN</label><input id="cpmIssRRN"></div>
+            <div class="field"><label>PAN</label><input id="cpmIssPan" value="9360001000000001"></div>
+          </div>
+          <button class="btn primary" onclick="submitCPM('issuer')">Submit as Issuer</button>
+        </div>
+        <div id="cpmResult" class="result-box" style="display:none"></div>
+      </div>
+    </section>
+
+    <!-- ─── Tuntas ──────────────────────────────── -->
+    <section id="tab-tuntas" class="tab-content">
+      <div class="card">
+        <h2>QRIS TUNTAS (End-to-End Settlement)</h2>
+        <p class="desc">Complete authorization → advice → settlement flow</p>
+        <div class="form-grid">
+          <div class="field"><label>Amount</label><input id="tuntasAmount" type="number" value="25000"></div>
+          <div class="field"><label>Scenario</label><select id="tuntasScenario"><option value="success">✅ Success (Full Tuntas)</option><option value="failed">❌ Failed at Auth</option><option value="pending">⏳ Pending</option><option value="system_error">⚙️ System Error</option></select></div>
+          <div class="field"><label>PAN</label><input id="tuntasPan" value="9360000100000001"></div>
+          <div class="field"><label>Merchant ID</label><input id="tuntasMerchId" value="MERCHANT001"></div>
+          <div class="field"><label>Terminal ID</label><input id="tuntasTerminal" value="TERM0001"></div>
+          <div class="field"><label>Currency</label><input id="tuntasCurrency" value="360"></div>
+          <div class="field"><label>Fee (blank=0.7%)</label><input id="tuntasFee" placeholder="auto"></div>
+        </div>
+        <button class="btn primary large" onclick="submitTuntas()">Run TUNTAS Flow</button>
+        <div id="tuntasResult" class="result-box" style="display:none"></div>
+      </div>
+    </section>
+
+    <!-- ─── Cross Border ───────────────────────── -->
+    <section id="tab-crossborder" class="tab-content">
+      <div class="card">
+        <h2>QRIS CROSS BORDER</h2>
+        <p class="desc">Simulate international QRIS transaction with currency conversion</p>
+        <div class="form-grid">
+          <div class="field"><label>Amount (origin currency)</label><input id="cbAmount" type="number" value="100"></div>
+          <div class="field"><label>Origin Country</label><select id="cbOriginCountry"><option value="SG">Singapore</option><option value="MY">Malaysia</option><option value="TH">Thailand</option></select></div>
+          <div class="field"><label>Origin Currency</label><select id="cbOriginCcy"><option value="702">SGD (702)</option><option value="458">MYR (458)</option><option value="764">THB (764)</option></select></div>
+          <div class="field"><label>Settlement Currency</label><input id="cbSettleCcy" value="360"></div>
+          <div class="field"><label>Exchange Rate</label><input id="cbRate" value="11500"></div>
+          <div class="field"><label>Scenario</label><select id="cbScenario"><option value="success">✅ Success</option><option value="failed">❌ Failed</option><option value="timeout">⌛ Timeout</option><option value="system_error">⚙️ System Error</option></select></div>
+          <div class="field"><label>Merchant Name</label><input id="cbMerchName" value="SINGAPORE SOUVENIR"></div>
+          <div class="field"><label>Merchant City</label><input id="cbMerchCity" value="SINGAPORE"></div>
+        </div>
+        <button class="btn primary large" onclick="submitCrossBorder()">Run Cross Border Flow</button>
+        <div id="cbResult" class="result-box" style="display:none"></div>
+      </div>
+    </section>
+
+    <!-- ─── Transaction Log ────────────────────── -->
+    <section id="tab-log" class="tab-content">
+      <div class="card">
+        <h2>Transaction Log</h2>
+        <div class="btn-row">
+          <button class="btn" onclick="refreshLog()">Refresh</button>
+          <button class="btn danger" onclick="clearLog()">Clear All</button>
+        </div>
+        <div id="logContent"><p class="muted">Loading…</p></div>
+      </div>
+    </section>
+  </main>
+
+  <script src="js/app.js"></script>
+</body>
+</html>

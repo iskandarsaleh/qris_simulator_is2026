@@ -1,0 +1,59 @@
+@startuml MPM Flow
+title QRIS MPM (Merchant Presented Mode) Transaction Flow
+
+actor "Customer" as cust
+participant "Merchant\nTerminal" as term
+participant "Acquirer" as acq
+participant "Switch/\nPayment\nGateway" as sw
+participant "Issuer" as iss
+database "Redis" as redis
+
+cust -> term : Scan QRIS MPM\n(Static/Dynamic)
+term -> term : Parse TLV\nValidate CRC
+
+term -> acq : 0200 Auth Request\n(DE2:PAN, DE3:260000,\n DE4:Amount, DE48:QRIS)
+acq -> acq : Map TLV → ISO8583\nBuild 0200 Message
+acq -> redis : Store Transaction\n(RRN, Amount, QRIS)
+
+acq -> sw : 0200 Forward to Switch
+sw -> iss : 0200 Route to Issuer
+
+iss -> iss : Validate Account\nCheck Balance\nRisk Assessment
+
+alt Approved
+    iss -> sw : 0210 Response (DE39=00)
+    sw -> acq : 0210 Response (DE39=00)
+    acq -> term : Approved
+    
+    acq -> acq : Build 0220 Advice
+    acq -> sw : 0220 Financial Advice
+    sw -> acq : 0230 Advice ACK
+    
+    acq -> redis : Update Status\n= APPROVED
+    term -> cust : Payment Success ✅
+    
+else Declined (Insufficient)
+    iss -> sw : 0210 Response (DE39=51)
+    sw -> acq : 0210 Response (DE39=51)
+    acq -> term : Declined
+    term -> cust : Insufficient Funds ❌
+    
+else Timeout
+    iss -->x sw : No Response
+    sw -> acq : 0210 Response (DE39=68)
+    acq -> acq : Build 0400 Reversal
+    acq -> sw : 0400 Reversal Request
+    sw -> iss : 0400 Reversal Request
+    iss -> sw : 0410 Reversal ACK
+    sw -> acq : 0410 Reversal ACK
+    acq -> redis : Update Status\n= TIMEOUT
+    term -> cust : Transaction Timeout ⌛
+    
+else Suspected Fraud
+    iss -> sw : 0210 Response (DE39=59)
+    sw -> acq : 0210 Response (DE39=59)
+    acq -> term : Declined - Fraud
+    term -> cust : Transaction Declined 🚨
+end
+
+@enduml

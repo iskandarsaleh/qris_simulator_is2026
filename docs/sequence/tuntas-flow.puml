@@ -1,0 +1,59 @@
+@startuml Tuntas Flow
+title QRIS TUNTAS (End-to-End Settlement) Flow
+
+actor "Customer" as cust
+participant "Acquirer" as acq
+participant "Switch" as sw
+participant "Issuer" as iss
+participant "Settlement\nSystem" as settle
+database "Redis" as redis
+
+== STEP 1: Authorization ==
+
+cust -> acq : Initiate Payment
+acq -> acq : Build 0200\nMap QRIS TLV → ISO8583
+acq -> sw : 0200 Auth Request
+sw -> iss : 0200 Forward
+
+iss -> iss : Validate & Reserve Balance
+
+iss -> sw : 0210 Auth Response (DE39=00)
+sw -> acq : 0210 Approved
+acq -> redis : Store: Status=APPROVED
+
+== STEP 2: Financial Advice ==
+
+acq -> acq : Build 0220 Advice\n(Confirm completed txn)
+acq -> sw : 0220 Financial Advice
+sw -> sw : Validate Advice\nMatch with Auth
+sw -> acq : 0230 Advice ACK
+
+acq -> redis : Update: Advice Sent
+
+== STEP 3: End-of-Day Settlement (TUNTAS) ==
+
+note over acq,settle : End of Business Day
+
+acq -> acq : Build 0500 Reconciliation\nAggregate all transactions
+acq -> sw : 0500 Recon Request\n(Total count + amounts)
+sw -> sw : Match Acquirer Recon\nvs Switch Records
+
+sw -> iss : 0500 Recon Request
+iss -> iss : Match Issuer Records
+iss -> sw : 0510 Recon Response
+
+sw -> settle : Calculate Net Settlement\n(Fee deduction)\nAcquirer receives: Txn - MDR\nIssuer debits: Txn Amount
+settle -> settle : Process Fund Transfer\n(Bank Indonesia - BI-FAST)
+
+settle -> sw : Settlement Confirmed
+sw -> acq : 0510 Recon Response\n(DE39=00, Settlement Confirmed)
+
+acq -> redis : Update: TUNTAS COMPLETED\nSettlement Amount, Fee, Net
+
+note over acq,redis : Transaction is now "TUNTAS"\n(settled end-to-end)
+
+== Reconciliation Report ==
+
+acq -> acq : Generate Settlement Report\n- Total Txn Count\n- Total Amount\n- Total Fee (MDR)\n- Net Settlement Amount
+
+@enduml
